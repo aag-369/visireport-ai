@@ -18,7 +18,11 @@ export const colors = {
   termGreen: "#00FF88",
 } as const;
 
-export type DefectClass = "open" | "short" | "mousebite" | "spur" | "copper" | "pin-hole";
+// "missing-hole" was added as a 7th class when the user's own PKU-Market-PCB
+// dataset was incorporated alongside DeepPCB - it's a genuinely distinct
+// defect from "pin-hole" (absent drilled hole vs. a pit/void in copper), so
+// it's a new class rather than merged into an existing one.
+export type DefectClass = "open" | "short" | "mousebite" | "spur" | "copper" | "pin-hole" | "missing-hole";
 
 export const defectColors: Record<DefectClass, string> = {
   open: "#2979FF",
@@ -27,6 +31,7 @@ export const defectColors: Record<DefectClass, string> = {
   spur: "#FFB020",
   copper: "#FF6D00",
   "pin-hole": "#00E676",
+  "missing-hole": "#9B6DFF",
 };
 
 export const defectDisplayNames: Record<DefectClass, string> = {
@@ -36,6 +41,7 @@ export const defectDisplayNames: Record<DefectClass, string> = {
   spur: "Spur",
   copper: "Spurious Copper",
   "pin-hole": "Pin-hole",
+  "missing-hole": "Missing Hole",
 };
 
 export type Severity = "CRITICAL" | "MAJOR" | "MINOR";

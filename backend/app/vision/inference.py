@@ -18,7 +18,7 @@ from app.vision.tiling import (
 
 logger = logging.getLogger("visireport.vision")
 
-CLASS_NAMES = ["open", "short", "mousebite", "spur", "copper", "pin-hole"]
+CLASS_NAMES = ["open", "short", "mousebite", "spur", "copper", "pin-hole", "missing-hole"]
 
 
 class ModelNotAvailableError(RuntimeError):

@@ -1,4 +1,5 @@
 .env
+.env.local
 __pycache__/
 *.pyc
 .venv/
@@ -9,6 +10,7 @@ build/
 *.egg-info/
 backend/data/DeepPCB/
 backend/data/yolo_dataset/
+backend/data/combined_yolo_dataset/
 backend/data/runs/
 backend/*.db
 backend/uploads/

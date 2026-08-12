@@ -12,6 +12,7 @@ DEFECT_COLORS_BGR = {
     "spur": (32, 176, 255),        # #FFB020
     "copper": (0, 109, 255),       # #FF6D00
     "pin-hole": (118, 230, 0),     # #00E676
+    "missing-hole": (255, 109, 155),  # #9B6DFF
 }
 
 

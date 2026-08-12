@@ -1,18 +1,19 @@
 {
   "model_version": "yolov8n-visireport-v1",
-  "map50": 0.8811,
-  "map50_95": 0.555,
-  "precision": 0.8729,
-  "recall": 0.7685,
+  "map50": 0.6179,
+  "map50_95": 0.3876,
+  "precision": 0.8879,
+  "recall": 0.5608,
   "per_class": {
-    "open": 0.5606,
-    "short": 0.4678,
-    "mousebite": 0.5322,
-    "spur": 0.5469,
-    "copper": 0.7938,
-    "pin-hole": 0.6902
+    "open": 0.4429,
+    "short": 0.3629,
+    "mousebite": 0.3922,
+    "spur": 0.3623,
+    "copper": 0.5541,
+    "pin-hole": 0.7439,
+    "missing-hole": 0.0016
   },
-  "dataset": "DeepPCB (tangsanli5201/DeepPCB) - 500 train / 100 val images, 6-class PCB defect taxonomy",
-  "epochs": 12,
-  "notes": "CPU-only fine-tune of YOLOv8n at 416px for time-boxed training in a sandboxed environment - genuine measured metrics from a real training run, intentionally below the DeepPCB paper's reported SLA targets (mAP50 0.968 / mAP50-95 0.763), which remain documented targets for a full GPU training run on the complete 1500-image dataset."
+  "dataset": "DeepPCB (1200/150) + PKU-Market-PCB enhanced (420/120, balanced): 1620 train/270 val, 7-class taxonomy",
+  "epochs": 10,
+  "notes": "CPU-only YOLOv8n fine-tune, 416px, 10 epochs on real user-provided data. Below DeepPCB paper SLA (mAP50 0.968/mAP50-95 0.763) by design (time-boxed, no GPU). New 'missing-hole' class (70 PKU train imgs) did not converge in 10 epochs - near-zero recall/mAP for that class only; other 6 classes trained normally. See BUILD_NOTES.md."
 }

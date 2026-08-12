@@ -38,6 +38,7 @@ export default {
         spur: "#FFB020",
         copper: "#FF6D00",
         pinhole: "#00E676",
+        missinghole: "#9B6DFF",
       },
       severity: {
         critical: "#FF3B3B",

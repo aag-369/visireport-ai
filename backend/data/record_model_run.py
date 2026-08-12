@@ -11,12 +11,12 @@ import json
 import shutil
 from pathlib import Path
 
-RUN_DIR = Path(__file__).parent / "runs" / "detect" / "runs" / "visireport_pcb"
+RUN_DIR = Path(__file__).parent / "runs" / "detect" / "runs" / "detect" / "runs" / "visireport_pcb_v2"
 WEIGHTS_SRC = RUN_DIR / "weights" / "best.pt"
 WEIGHTS_DEST = Path(__file__).parent.parent / "weights" / "best.pt"
 METRICS_DEST = Path(__file__).parent.parent / "weights" / "model_metrics.json"
 
-CLASS_NAMES = ["open", "short", "mousebite", "spur", "copper", "pin-hole"]
+CLASS_NAMES = ["open", "short", "mousebite", "spur", "copper", "pin-hole", "missing-hole"]
 
 
 def read_last_epoch_row() -> dict:
@@ -50,7 +50,7 @@ def main():
         from ultralytics import YOLO
 
         model = YOLO(str(WEIGHTS_DEST))
-        data_yaml = Path(__file__).parent / "yolo_dataset" / "data.yaml"
+        data_yaml = Path(__file__).parent / "combined_yolo_dataset" / "data.yaml"
         metrics = model.val(data=str(data_yaml), imgsz=416, verbose=False)
         maps = metrics.box.maps  # per-class mAP50-95
         for i, name in enumerate(CLASS_NAMES):
@@ -66,13 +66,16 @@ def main():
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "per_class": per_class,
-        "dataset": "DeepPCB (tangsanli5201/DeepPCB) - 500 train / 100 val images, 6-class PCB defect taxonomy",
+        "dataset": (
+            "DeepPCB (1200/150) + PKU-Market-PCB enhanced (420/120, balanced): "
+            "1620 train/270 val, 7-class taxonomy"
+        ),
         "epochs": epoch,
         "notes": (
-            "CPU-only fine-tune of YOLOv8n at 416px for time-boxed training in a sandboxed environment - "
-            "genuine measured metrics from a real training run, intentionally below the DeepPCB paper's "
-            "reported SLA targets (mAP50 0.968 / mAP50-95 0.763), which remain documented targets for a "
-            "full GPU training run on the complete 1500-image dataset."
+            "CPU-only YOLOv8n fine-tune, 416px, 10 epochs on real user-provided data. "
+            "Below DeepPCB paper SLA (mAP50 0.968/mAP50-95 0.763) by design (time-boxed, no GPU). "
+            "New 'missing-hole' class (70 PKU train imgs) did not converge in 10 epochs - near-zero "
+            "recall/mAP for that class only; other 6 classes trained normally. See BUILD_NOTES.md."
         ),
     }
     METRICS_DEST.write_text(json.dumps(payload, indent=2))

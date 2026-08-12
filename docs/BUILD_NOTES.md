@@ -5,6 +5,35 @@ implementation. This doc is the honest account of what was verified end-to-end i
 sandbox, what's real-but-limited by the sandbox's hardware, and the one piece that needs your
 own credentials to fully verify.
 
+## Update: your real datasets + your original notebook
+
+After the initial rebuild, you provided your actual original prototype notebook
+(`visireportaimasterversion 1.ipynb`) plus two real dataset zips on your machine
+(`archive (14).zip`, `archive (15).zip`). Both were read/inspected and incorporated:
+
+- **Notebook**: confirmed the original Streamlit `app.py` (notebook cell 17) ran entirely on
+  `run_mock_vision_pipeline()`/`run_mock_cognitive_pipeline()` - hardcoded fake detections and a
+  static NCR report string - exactly the "fully-mocked prototype" this rebuild replaces. The
+  notebook's `PCBAVisionEngine` (tiling/async-inference/NMS) is architecturally close to what was
+  already built here; its `VISIREPORT_SCHEMA` is shaped differently (nested `metadata`/
+  `vision_results`, raw `bbox` array) from the flat schema this rebuild uses - see "Datasets" in
+  `README.md` for why the flat schema was kept.
+- **`archive (14).zip`**: contains your own copy of DeepPCB *and* a second real dataset,
+  PKU-Market-PCB (Data enhanced version), with a 6-class taxonomy that's 5/6 identical to
+  DeepPCB's but has a genuinely distinct 6th class (`missing_hole` vs. DeepPCB's `pin-hole`).
+  Both were combined into one training set with a unified 7-class taxonomy - see "Datasets" in
+  `README.md` for the full mapping and `backend/data/prepare_combined_dataset.py` for the exact
+  extraction/remap logic, verified visually (annotated sample images with correctly-placed boxes
+  for both DeepPCB's raw-bbox format and PKU's already-normalized YOLO labels).
+- **`archive (15).zip`**: inspected and intentionally *not* used - it's the raw, pre-augmentation
+  `PCB_DATASET` (XML/VOC annotations) that PKU-Market-PCB (Data enhanced version) is already
+  derived from, so it adds no information beyond what `archive (14).zip` already provides.
+- The shipped `backend/weights/best.pt` was retrained from scratch on the combined 7-class
+  dataset (1620 train / 270 val images) - the taxonomy change touches the JSON Schema enum,
+  `DEFECT_TAXONOMY`, the annotated-image color palette, and the frontend theme tokens/Tailwind
+  config, all updated consistently and re-verified (31/31 backend tests still pass, `tsc --noEmit`
+  clean on the frontend).
+
 ## A note on how verification was done
 
 The build sandbox's container runtime does not permit running a nested Docker daemon (`dockerd`
@@ -73,16 +102,20 @@ Docker daemon; if anything doesn't come up cleanly there, it's worth a first-run
 
 ## Real but constrained by the build sandbox
 
-- **Model accuracy**: this sandbox has no GPU. The shipped weights were fine-tuned CPU-only on a
-  500-image/12-epoch subset of DeepPCB at 416px (~20 min wall clock). The actual measured metrics
-  (mAP50 0.881, mAP50-95 0.555, precision 0.873, recall 0.769) are recorded honestly in the
-  `model_runs` table via `backend/data/record_model_run.py`, which parses the real Ultralytics
-  training output - nothing is hand-typed. This is intentionally below the DeepPCB paper's SLA
-  targets (mAP50 0.968 / mAP50-95 0.763 - note the paper's own mAP50-95 target is actually lower
-  than what this quick CPU run already achieved on mAP50-95, though its mAP50 target is higher).
-  Those targets are kept in the frontend explicitly labeled "target SLAs, not achieved metrics".
-  Retraining on the full 1500-image dataset with a GPU (see main `README.md`) should improve this
-  further.
+- **Model accuracy**: this sandbox has no GPU. The shipped weights were fine-tuned CPU-only for
+  10 epochs at 416px on the combined 7-class dataset (1620 train / 270 val - see "Datasets" in
+  `README.md`), ~65 min wall clock. The actual measured metrics (mAP50 0.618, mAP50-95 0.388,
+  precision 0.888, recall 0.561) are recorded honestly in the `model_runs` table via
+  `backend/data/record_model_run.py`, which parses the real Ultralytics training/val output -
+  nothing is hand-typed. Per-class mAP50-95: open 0.443, short 0.363, mousebite 0.392, spur 0.362,
+  copper 0.554, pin-hole 0.744 - all six original DeepPCB-derived classes trained normally.
+  **`missing-hole` (the new 7th class from your PKU dataset) did not converge** - mAP50-95 0.002,
+  essentially zero recall. With only 70 training images and defects that are small relative to a
+  416px input, 10 epochs wasn't enough for that one class to learn - this is reported honestly
+  rather than smoothed over. `backend/data/prepare_combined_dataset.py` has `PKU_TRAIN_PER_CLASS`/
+  `PKU_VAL_PER_CLASS` knobs to sample more PKU images, and more epochs (or a GPU) would likely fix
+  this. The DeepPCB paper's own targets (mAP50 0.968 / mAP50-95 0.763) are kept in the frontend
+  explicitly labeled "target SLAs, not achieved metrics".
 - **System health telemetry**: CPU/memory are read live via `psutil` on the backend host. There
   is no GPU in this deployment, so GPU telemetry is simply not shown, rather than being faked.
 
