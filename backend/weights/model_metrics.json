@@ -1,0 +1,18 @@
+{
+  "model_version": "yolov8n-visireport-v1",
+  "map50": 0.8811,
+  "map50_95": 0.555,
+  "precision": 0.8729,
+  "recall": 0.7685,
+  "per_class": {
+    "open": 0.5606,
+    "short": 0.4678,
+    "mousebite": 0.5322,
+    "spur": 0.5469,
+    "copper": 0.7938,
+    "pin-hole": 0.6902
+  },
+  "dataset": "DeepPCB (tangsanli5201/DeepPCB) - 500 train / 100 val images, 6-class PCB defect taxonomy",
+  "epochs": 12,
+  "notes": "CPU-only fine-tune of YOLOv8n at 416px for time-boxed training in a sandboxed environment - genuine measured metrics from a real training run, intentionally below the DeepPCB paper's reported SLA targets (mAP50 0.968 / mAP50-95 0.763), which remain documented targets for a full GPU training run on the complete 1500-image dataset."
+}

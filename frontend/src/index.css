@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family: "IBM Plex Sans", sans-serif;
+  }
+  ::selection {
+    background: #00d4ff44;
+  }
+}
+
+@layer components {
+  .visi-panel {
+    @apply bg-bg-secondary border border-border rounded-industrial;
+  }
+  .visi-panel-header {
+    @apply flex items-center gap-2 px-3 py-2 border-b border-border font-mono text-xs uppercase tracking-[0.14em] text-accent-cyan;
+  }
+  .visi-panel-header::before {
+    content: "◈";
+    @apply text-accent-cyan;
+  }
+  .visi-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider;
+  }
+  .visi-btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-btn border border-accent-cyan text-accent-cyan
+      font-mono text-xs uppercase tracking-[0.12em] transition-all duration-150 bg-transparent;
+  }
+  .visi-btn:hover:not(:disabled) {
+    background: linear-gradient(90deg, #00d4ff, #00e6c8);
+    color: #05070a;
+  }
+  .visi-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+  .visi-btn-primary {
+    background: linear-gradient(90deg, #00d4ff, #00e6c8);
+    @apply text-bg-primary border-transparent;
+  }
+  .visi-status-dot {
+    @apply inline-block w-2 h-2 rounded-full animate-pulse-glow;
+  }
+  .visi-terminal {
+    @apply bg-bg-terminal border border-border rounded-industrial font-code text-[11px] text-termgreen p-3 overflow-y-auto;
+  }
+  .visi-iso-badge {
+    @apply visi-badge border border-accent-purple text-accent-purple bg-accent-purple/10;
+  }
+  .visi-input {
+    @apply bg-bg-tertiary border border-border rounded-industrial px-2.5 py-1.5 text-sm text-text-primary
+      focus:outline-none focus:border-accent-cyan placeholder:text-text-muted;
+  }
+}
