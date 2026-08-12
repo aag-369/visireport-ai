@@ -118,3 +118,71 @@ See `.env.example` for the full list. The most important ones to change before a
 - `JWT_SECRET` - set to a long random string
 - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` - required for narrative generation (see `LLM_PROVIDER`)
 - `SEED_ENGINEER_PASSWORD` - change from the default before exposing this beyond localhost
+
+## Pushing to GitHub
+
+This repo is delivered with its git history intact (currently 2 commits) but was never pushed
+anywhere - do that from your own machine:
+
+```bash
+cd visireport-ai
+git remote add origin https://github.com/<your-username>/<your-repo-name>.git
+git branch -M main
+git push -u origin main
+```
+
+1. Create an empty repository on [github.com/new](https://github.com/new) first - **don't**
+   initialize it with a README/license/`.gitignore`, or the push above will conflict.
+2. Replace `<your-username>/<your-repo-name>` with your repo's URL (shown on the repo page after
+   creation, or run `gh repo create <name> --private --source=. --remote=origin` instead of the
+   `git remote add` line above if you have the `gh` CLI installed and authenticated).
+3. If prompted for a password, GitHub no longer accepts your account password over HTTPS - use a
+   [personal access token](https://github.com/settings/tokens) as the password, or push over SSH
+   instead (`git remote add origin git@github.com:<you>/<repo>.git`).
+
+## Deploying to Render
+
+`render.yaml` at the repo root is a [Render Blueprint](https://render.com/docs/blueprint-spec)
+that provisions all 5 services in one shot: managed Postgres, RabbitMQ (private service with a
+persistent disk), the backend (Docker web service, runs `alembic upgrade head && python -m
+app.seed` automatically before each deploy), the worker (Docker background worker), and the
+frontend (static site build).
+
+1. Push this repo to GitHub first (see above) - Render deploys from a GitHub repo, not a local
+   folder or zip.
+2. In the [Render dashboard](https://dashboard.render.com), click **New +** -> **Blueprint**,
+   and select your repo. Render reads `render.yaml` and shows a preview of all 5 resources it's
+   about to create - confirm to deploy.
+3. Render will prompt for the two secret values marked `sync: false` in `render.yaml`:
+   `ANTHROPIC_API_KEY` (or leave blank and set `OPENAI_API_KEY` + `LLM_PROVIDER=openai` instead
+   for narrative generation). You can also add these later from each service's **Environment**
+   tab without a full redeploy.
+4. **After the first deploy**, Render assigns real URLs to the backend and frontend (visible on
+   each service's page, normally `https://visireport-backend.onrender.com` and
+   `https://visireport-frontend.onrender.com` - exactly what's already hardcoded in
+   `render.yaml`, but double-check against what Render actually assigned). If either differs from
+   what's in `render.yaml`:
+   - Update `FRONTEND_ORIGIN` on the **backend** service to the real frontend URL (CORS depends
+     on this) and it'll pick it up on the next restart.
+   - Update `VITE_API_BASE_URL`/`VITE_WS_BASE_URL` on the **frontend** service to the real
+     backend URL and trigger a **manual redeploy** of the frontend specifically - these are
+     baked in at build time, so a plain restart won't pick up the change.
+5. Log in with the seed credentials from the backend service's **Environment** tab
+   (`SEED_ENGINEER_EMAIL` / the auto-generated `SEED_ENGINEER_PASSWORD` - Render generates a
+   real random one here rather than shipping the `change-me-please` default).
+6. RabbitMQ's username/password are set as plain values in `render.yaml` (not Render's
+   `generateValue`) so the same value can be reused verbatim in the backend/worker's
+   `RABBITMQ_URL` - Blueprint env vars can't be composed across services. It's a private service
+   with no public network access, but change `RABBITMQ_DEFAULT_PASS` (and the two matching
+   `amqp://...` URLs) in `render.yaml` before deploying if you'd rather not commit even an
+   internal-only password to your repo.
+7. The `starter` plans referenced in `render.yaml` are paid (Render's free tier doesn't support
+   private services/disks, which RabbitMQ and the upload disk need) - check current
+   [pricing](https://render.com/pricing) and adjust the `plan:` fields if you want something
+   cheaper/different before deploying.
+
+This was written and validated as valid YAML in the build sandbox, but was **not** deployed to a
+real Render account from there (no Render account/connector available in that session) - the
+first real deploy is the actual test of the blueprint end-to-end. If something in it doesn't
+match Render's current schema, the dashboard's Blueprint preview screen will show a clear error
+before creating anything.

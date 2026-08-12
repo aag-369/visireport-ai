@@ -17,4 +17,6 @@ RUN mkdir -p /app/uploads /app/weights
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Respects $PORT when the platform assigns one (e.g. Render), falls back to
+# 8000 for docker-compose/local use. Shell form so $PORT expands.
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

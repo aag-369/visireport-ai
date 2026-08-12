@@ -1,0 +1,172 @@
+# Render Blueprint for VisiReport AI.
+#
+# Deploys all 5 services from docker-compose.yml onto Render:
+#   - Postgres (Render managed database)
+#   - RabbitMQ (private service, official Docker image, persistent disk)
+#   - backend (FastAPI, Docker web service, runs migrations + seed on deploy)
+#   - worker (RabbitMQ consumer, Docker background worker)
+#   - frontend (Vite/React static site)
+#
+# Usage: push this repo to GitHub, then in the Render dashboard choose
+# "New +" -> "Blueprint" and point it at the repo. Render reads this file
+# and provisions everything below. See README.md "Deploying to Render" for
+# the full walkthrough, including the handful of values you must fill in
+# after the first deploy (API keys, JWT secret, frontend URL).
+#
+# RabbitMQ's user/password are set as plain values here (not generateValue)
+# so they can be reused verbatim in RABBITMQ_URL on the backend/worker below
+# - Render Blueprint env vars can't be composed/concatenated across
+# services. It's a private service (no public network access), but change
+# RABBITMQ_DEFAULT_PASS here (and the matching amqp:// URLs below) before
+# deploying if you want a different password.
+
+databases:
+  - name: visireport-db
+    plan: basic-256mb
+    databaseName: visireport
+    user: visireport
+
+services:
+  # ── RabbitMQ (private service, internal only) ──────────────────────────
+  - type: pserv
+    name: visireport-rabbitmq
+    runtime: docker
+    dockerfilePath: ./ops/rabbitmq/Dockerfile
+    dockerContext: ./ops/rabbitmq
+    plan: starter
+    disk:
+      name: rabbitmq-data
+      mountPath: /var/lib/rabbitmq
+      sizeGB: 5
+    envVars:
+      - key: RABBITMQ_DEFAULT_USER
+        value: visireport
+      - key: RABBITMQ_DEFAULT_PASS
+        value: change-me-rabbitmq-password
+      - key: RABBITMQ_ERLANG_COOKIE
+        generateValue: true
+
+  # ── Backend API (FastAPI, Docker web service) ──────────────────────────
+  - type: web
+    name: visireport-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    healthCheckPath: /api/v1/health
+    preDeployCommand: alembic upgrade head && python -m app.seed
+    disk:
+      name: visireport-uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visireport-db
+          property: connectionString
+      - key: RABBITMQ_URL
+        value: amqp://visireport:change-me-rabbitmq-password@visireport-rabbitmq:5672/
+      - key: RABBITMQ_EXCHANGE
+        value: visireport.defects.exchange
+      - key: RABBITMQ_QUEUE
+        value: visireport.defects.queue
+      - key: RABBITMQ_MANAGEMENT_URL
+        value: http://visireport-rabbitmq:15672
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: 480
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-5
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: MODEL_WEIGHTS_PATH
+        value: /app/weights/best.pt
+      - key: DEFAULT_TILE_SIZE
+        value: 640
+      - key: DEFAULT_TILE_OVERLAP
+        value: 64
+      - key: DEFAULT_CONF_THRESHOLD
+        value: 0.25
+      - key: DEFAULT_IOU_THRESHOLD
+        value: 0.45
+      - key: MAX_UPLOAD_MB
+        value: 25
+      - key: MAX_IMAGE_DIM
+        value: 4096
+      # Fill in with your actual frontend URL after its first deploy
+      # (Render shows it in the dashboard) - see README.md.
+      - key: FRONTEND_ORIGIN
+        value: https://visireport-frontend.onrender.com
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SEED_ENGINEER_EMAIL
+        value: engineer@visireport.ai
+      - key: SEED_ENGINEER_PASSWORD
+        generateValue: true
+
+  # ── Worker (RabbitMQ consumer + LLM narrative synthesis) ───────────────
+  - type: worker
+    name: visireport-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    dockerCommand: python -m app.messaging.consumer_worker
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visireport-db
+          property: connectionString
+      - key: RABBITMQ_URL
+        value: amqp://visireport:change-me-rabbitmq-password@visireport-rabbitmq:5672/
+      - key: RABBITMQ_EXCHANGE
+        value: visireport.defects.exchange
+      - key: RABBITMQ_QUEUE
+        value: visireport.defects.queue
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-5
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ── Frontend (Vite/React, static site) ──────────────────────────────────
+  - type: web
+    name: visireport-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      # Fill in with your actual backend URL after its first deploy (Render
+      # shows it in the dashboard) - these are baked in at build time, so
+      # a change here requires a redeploy of this service, not just a
+      # restart. See README.md "Deploying to Render".
+      - key: VITE_API_BASE_URL
+        value: https://visireport-backend.onrender.com
+      - key: VITE_WS_BASE_URL
+        value: wss://visireport-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,4 +1,6 @@
 from functools import lru_cache
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +9,19 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./visireport.db"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        # Managed Postgres providers (Render, Railway, Heroku-style) hand out
+        # a bare "postgres://" or "postgresql://" URL - normalize to the
+        # asyncpg driver scheme this app's async SQLAlchemy engine requires,
+        # so their connection string can be pasted in as-is.
+        if v.startswith("postgres://"):
+            return "postgresql+asyncpg://" + v[len("postgres://"):]
+        if v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://"):]
+        return v
 
     # Message broker
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
