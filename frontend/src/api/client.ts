@@ -15,10 +15,9 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// Artifacts/browser storage rules forbid localStorage in Claude-authored
-// HTML artifacts, but this is a delivered standalone React app the user
-// runs themselves (not a claude.ai artifact), so real browser storage is
-// appropriate here for JWT persistence across page reloads.
+// Wrapped in try/catch so JWT persistence degrades gracefully in
+// environments where localStorage is unavailable or blocked (private
+// browsing, restrictive browser settings, etc).
 const localStorageSafe = {
   get(key: string): string | null {
     try {

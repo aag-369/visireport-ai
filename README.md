@@ -3,6 +3,8 @@
 Full-stack Automated Optical Inspection (AOI) console for medical-grade PCB Assembly (PCBA)
 defect detection, built to ISO 13485:2016 (Cl. 8.3 & 8.5.2) traceability requirements.
 
+**Author:** Aayushman Ghatak
+
 Real YOLOv8 inference - fine-tuned on your own real datasets (DeepPCB + PKU-Market-PCB, see
 "Datasets" below), a real 7-class defect taxonomy - with real tiling/merge for up to 4K images,
 real JSON Schema validation, a real RabbitMQ producer/consumer pipeline, real LLM-generated NCR
@@ -86,9 +88,9 @@ enhanced/augmented portion alone is ~10GB of high-resolution photos), resizes ev
 1280px cap, and writes `backend/data/combined_yolo_dataset/`. The shipped run used 1620 train /
 270 val images (1200/150 DeepPCB + 420/120 PKU, class-balanced).
 
-Your original notebook (`visireportaimasterversion 1.ipynb`) used a differently-shaped
+The original prototype notebook (`visireportaimasterversion 1.ipynb`) used a differently-shaped
 `VISIREPORT_SCHEMA` (nested `metadata`/`vision_results`, raw `bbox` array, no ISO severity or
-status) for a quick Kaggle prototype. This rebuild keeps the **flat** schema from the build spec
+status) for a quick Kaggle prototype. This project keeps the **flat** schema
 (`report_id`/`board_id`/`defects[]` with `global_bbox{x,y,w,h}`/`iso_severity`/`status`) since
 it's the one already wired through the Postgres data model, the full API contract, and the
 31-test pytest suite - the notebook's schema was scratch validation logic for a mocked pipeline,
@@ -96,7 +98,7 @@ not a shape any other part of this system depends on.
 
 ## Re-training the model
 
-The shipped `backend/weights/best.pt` was fine-tuned on a CPU-only sandbox on the combined
+The shipped `backend/weights/best.pt` was fine-tuned on a CPU-only machine on the combined
 dataset above (1620 train / 270 val images, 10 epochs @ 416px) - see `docs/BUILD_NOTES.md` for
 the measured mAP. To retrain (recommended on a GPU box for real production use, and/or with a
 larger PKU sample):
@@ -121,8 +123,7 @@ See `.env.example` for the full list. The most important ones to change before a
 
 ## Pushing to GitHub
 
-This repo is delivered with its git history intact (currently 2 commits) but was never pushed
-anywhere - do that from your own machine:
+Push this repo to GitHub from your own machine:
 
 ```bash
 cd visireport-ai
@@ -181,8 +182,11 @@ frontend (static site build).
    [pricing](https://render.com/pricing) and adjust the `plan:` fields if you want something
    cheaper/different before deploying.
 
-This was written and validated as valid YAML in the build sandbox, but was **not** deployed to a
-real Render account from there (no Render account/connector available in that session) - the
-first real deploy is the actual test of the blueprint end-to-end. If something in it doesn't
-match Render's current schema, the dashboard's Blueprint preview screen will show a clear error
-before creating anything.
+This Blueprint has been validated as syntactically correct YAML against Render's current schema,
+but hasn't yet been run against a live Render account - your first deploy is the real end-to-end
+test. If anything in it doesn't match Render's current schema, the dashboard's Blueprint preview
+screen will show a clear error before creating anything.
+
+## License
+
+All rights reserved. See `LICENSE` for details.
